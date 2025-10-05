@@ -1,0 +1,229 @@
+/*package com.parabank.pages;
+
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.support.FindBy;
+import org.openqa.selenium.support.PageFactory;
+import org.openqa.selenium.support.ui.Select;
+
+public class BillPayPage extends BasePage {
+    @FindBy(name="payee.name") private WebElement payeeName;
+    @FindBy(name="payee.address.street") private WebElement payeeAddress;
+    @FindBy(name="payee.address.city") private WebElement payeeCity;
+    @FindBy(name="payee.address.state") private WebElement payeeState;
+    @FindBy(name="payee.address.zipCode") private WebElement payeeZip;
+    @FindBy(name="payee.phoneNumber") private WebElement payeePhone;
+    @FindBy(name="payee.accountNumber") private WebElement payeeAccount;
+    @FindBy(name="verifyAccount") private WebElement payeeVerify;
+    @FindBy(name="amount") private WebElement amount;
+    @FindBy(css="input[value='Send Payment']") private WebElement sendPayment;
+    @FindBy(css="#rightPanel .title") private WebElement confirmationTitle;
+    @FindBy(css="#rightPanel .error") private WebElement errorPanel;
+    @FindBy(css="#rightPanel") private WebElement rightPanel;
+    
+    public BillPayPage(WebDriver driver){ super(driver); PageFactory.initElements(driver,this);}    
+
+    public void fillPayee(String n,String a,String c,String s,String z,String p,String acc,String amt){
+        type(payeeName,n); type(payeeAddress,a); type(payeeCity,c); type(payeeState,s); type(payeeZip,z);
+        type(payeePhone,p); type(payeeAccount,acc); type(payeeVerify,acc); type(amount,amt);
+    }
+    public void submit(){ click(sendPayment);}    
+    public String getConfirmation(){ return getText(confirmationTitle);}    
+    public boolean hasValidationError(){ try { return errorPanel.isDisplayed(); } catch(Exception e){ return false; } }
+    
+    public String getFromAccountTextSafe() {
+        try {
+            Select s = new Select(driver.findElement(By.id("fromAccountId")));
+            return s.getFirstSelectedOption().getText().trim();
+        } catch (Exception e1) {
+            try {
+                Select s = new Select(driver.findElement(By.name("fromAccountId")));
+                return s.getFirstSelectedOption().getText().trim();
+            } catch (Exception e2) {
+                return "";
+            }
+        }
+    }
+    public void clearAll() {
+    	try {
+    	payeeName.clear(); payeeAddress.clear(); payeeCity.clear(); payeeState.clear();
+    	payeeZip.clear(); payeePhone.clear(); payeeAccount.clear(); payeeVerify.clear(); amount.clear();
+    	} catch (Exception ignored) {}
+    	}
+
+
+    	public String getErrorTextSafe() { try { return getText(errorPanel);} catch(Exception e){ return ""; } }
+
+
+    	public String getRightPanelText() { try { return getText(rightPanel);} catch(Exception e){ return ""; } }
+    	
+    	
+}*/
+package com.parabank.pages;
+
+import java.time.Duration;
+import java.util.Objects;
+
+import org.openqa.selenium.By;
+import org.openqa.selenium.StaleElementReferenceException;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.support.FindBy;
+import org.openqa.selenium.support.PageFactory;
+import org.openqa.selenium.support.ui.ExpectedCondition;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.Select;
+import org.openqa.selenium.support.ui.WebDriverWait;
+
+/**
+ * Page object for Parabank Bill Pay.
+ * Input fields still use @FindBy.
+ * Anything read AFTER submit (confirmation, errors) re-locates via By each time
+ * to avoid stale element references when the page reloads.
+ */
+public class BillPayPage extends BasePage {
+
+    // -------- Inputs / actions --------
+    @FindBy(name = "payee.name")            private WebElement payeeName;
+    @FindBy(name = "payee.address.street")  private WebElement payeeAddress;
+    @FindBy(name = "payee.address.city")    private WebElement payeeCity;
+    @FindBy(name = "payee.address.state")   private WebElement payeeState;
+    @FindBy(name = "payee.address.zipCode") private WebElement payeeZip;
+    @FindBy(name = "payee.phoneNumber")     private WebElement payeePhone;
+    @FindBy(name = "payee.accountNumber")   private WebElement payeeAccount;
+    @FindBy(name = "verifyAccount")         private WebElement payeeVerify;
+    @FindBy(name = "amount")                private WebElement amount;
+    @FindBy(css = "input[value='Send Payment']") private WebElement sendPaymentBtn;
+
+    // -------- Read-only locators (re-found after navigation) --------
+    private static final By RIGHT_PANEL = By.cssSelector("#rightPanel");
+    private static final By TITLE       = By.cssSelector("#rightPanel .title");
+    private static final By ERROR_PANEL = By.cssSelector("#rightPanel .error");
+
+    public BillPayPage(WebDriver driver) {
+        super(driver);
+        PageFactory.initElements(driver, this);
+    }
+
+    // -------- Interactions --------
+    public void fillPayee(String n, String a, String c, String s, String z, String p, String acc, String amt) {
+        type(payeeName, n);
+        type(payeeAddress, a);
+        type(payeeCity, c);
+        type(payeeState, s);
+        type(payeeZip, z);
+        type(payeePhone, p);
+        type(payeeAccount, acc);
+        type(payeeVerify, acc);
+        type(amount, amt);
+    }
+
+    public void submit() { click(sendPaymentBtn); }
+
+    public void clearAll() {
+        try {
+            payeeName.clear();
+            payeeAddress.clear();
+            payeeCity.clear();
+            payeeState.clear();
+            payeeZip.clear();
+            payeePhone.clear();
+            payeeAccount.clear();
+            payeeVerify.clear();
+            amount.clear();
+        } catch (Exception ignored) {}
+    }
+
+    // -------- Safe getters (re-find after reload) --------
+    public String getRightPanelText() {
+        try { return driver.findElement(RIGHT_PANEL).getText(); } catch (Exception e) { return ""; }
+    }
+
+    public String getConfirmationTitleText() {
+        try { return driver.findElement(TITLE).getText(); } catch (Exception e) { return ""; }
+    }
+
+    public boolean hasValidationError() {
+        try { return driver.findElement(ERROR_PANEL).isDisplayed(); } catch (Exception e) { return false; }
+    }
+
+    public String getErrorTextSafe() {
+        try { return driver.findElement(ERROR_PANEL).getText(); } catch (Exception e) { return ""; }
+    }
+
+    public String getFromAccountTextSafe() {
+        try {
+            Select s = new Select(driver.findElement(By.id("fromAccountId")));
+            return s.getFirstSelectedOption().getText().trim();
+        } catch (Exception e1) {
+            try {
+                Select s = new Select(driver.findElement(By.name("fromAccountId")));
+                return s.getFirstSelectedOption().getText().trim();
+            } catch (Exception e2) {
+                return "";
+            }
+        }
+    }
+
+    /**
+     * Waits for the confirmation view after same-tab navigation and returns a text snapshot
+     * once it contains either the payee name or the word "complete".
+     *
+     * Typical usage in test:
+     *   String snap = bill.waitForConfirmationSnapshot(payee, Duration.ofSeconds(10));
+     */
+    public String waitForConfirmationSnapshot(String payee, Duration timeout) {
+        final String needle1 = (payee == null ? "" : payee.toLowerCase());
+        final String needle2 = "complete"; // Parabank shows "Bill Payment Complete"
+
+        WebDriverWait wait = new WebDriverWait(driver, timeout);
+        wait.ignoring(StaleElementReferenceException.class);
+
+        // First, wait for navigation/DOM to present the target area.
+        wait.until(ExpectedConditions.or(
+            ExpectedConditions.presenceOfElementLocated(TITLE),
+            ExpectedConditions.presenceOfElementLocated(RIGHT_PANEL)
+        ));
+
+        // Then poll until expected text appears (re-find every time).
+        ExpectedCondition<String> textContainsNeedle = d -> {
+            String panel = safeText(RIGHT_PANEL);
+            String title = safeText(TITLE);
+
+            String combined = !isBlank(panel) ? panel : title;
+            String lower = (combined == null) ? "" : combined.toLowerCase();
+
+            if (lower.contains(needle1) || lower.contains(needle2)) {
+                return combined;
+            }
+
+            // As a last-resort fallback (very fast transitions), scan page source once in a while
+            try {
+                String src = Objects.toString(d.getPageSource(), "").toLowerCase();
+                if (src.contains(needle1) || src.contains(needle2)) {
+                    return !isBlank(panel) ? panel : (!isBlank(title) ? title : "(matched in page source)");
+                }
+            } catch (Exception ignored) {}
+
+            return null;
+        };
+
+        return wait.until(textContainsNeedle);
+    }
+
+    // -------- Helpers --------
+    private String safeText(By locator) {
+        try {
+            WebElement el = driver.findElement(locator);
+            return el.getText();
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    private boolean isBlank(String s) {
+        return s == null || s.trim().isEmpty();
+    }
+}
+

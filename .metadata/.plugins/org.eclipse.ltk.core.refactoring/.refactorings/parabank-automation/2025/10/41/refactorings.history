@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">
+<refactoring comment="Copy element &apos;testdata.xlsx&apos; to &apos;parabanksite-automation/src/test/resources&apos;&#x0D;&#x0A;- Original project: &apos;parabank-automation&apos;&#x0D;&#x0A;- Destination element: &apos;parabanksite-automation/src/test/resources&apos;&#x0D;&#x0A;- Original element: &apos;testdata.xlsx&apos;" description="Copy file" destination="=parabanksite-automation/src\/test\/resources=/maven.pomderived=/true=/=/test=/true=/=/optional=/true=/" element1="src/test/resources/testdata.xlsx" files="1" flags="589830" folders="0" id="org.eclipse.jdt.ui.copy" policy="org.eclipse.jdt.ui.copyResources" stamp="1759650957266" units="0" version="1.0"/>
+</session>

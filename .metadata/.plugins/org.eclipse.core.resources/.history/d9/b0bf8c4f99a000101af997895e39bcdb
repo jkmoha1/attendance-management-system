@@ -1,0 +1,247 @@
+package com.parabank.pages;
+
+import java.time.Duration;
+
+import org.openqa.selenium.By;
+import org.openqa.selenium.NoSuchElementException;
+import org.openqa.selenium.StaleElementReferenceException;
+import org.openqa.selenium.TimeoutException;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.interactions.Actions;
+import org.openqa.selenium.Keys;
+import org.openqa.selenium.support.FindBy;
+import org.openqa.selenium.support.PageFactory;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.Select;
+import org.openqa.selenium.support.ui.WebDriverWait;
+
+public class BillPayPage extends BasePage {
+    @FindBy(name="payee.name") private WebElement payeeName;
+    @FindBy(name="payee.address.street") private WebElement payeeAddress;
+    @FindBy(name="payee.address.city") private WebElement payeeCity;
+    @FindBy(name="payee.address.state") private WebElement payeeState;
+    @FindBy(name="payee.address.zipCode") private WebElement payeeZip;
+    @FindBy(name="payee.phoneNumber") private WebElement payeePhone;
+    @FindBy(name="payee.accountNumber") private WebElement payeeAccount;
+    @FindBy(name="verifyAccount") private WebElement payeeVerify;
+    @FindBy(name="amount") private WebElement amount;
+    @FindBy(css="input[value='Send Payment']") private WebElement sendPayment;
+    @FindBy(css="#rightPanel .title") private WebElement confirmationTitle;
+    @FindBy(css="#rightPanel .error") private WebElement errorPanel;
+    // DO NOT cache #rightPanel as a field
+
+    public BillPayPage(WebDriver driver){
+        super(driver);
+        PageFactory.initElements(driver,this);
+    }
+
+    public void fillPayee(String n,String a,String c,String s,String z,String p,String acc,String amt){
+        type(payeeName,n); type(payeeAddress,a); type(payeeCity,c); type(payeeState,s); type(payeeZip,z);
+        type(payeePhone,p); type(payeeAccount,acc); type(payeeVerify,acc); type(amount,amt);
+    }
+
+    /** Normal submit using click but with a wait for clickable */
+    public void submit() {
+        try {
+            WebDriverWait w = new WebDriverWait(driver, Duration.ofSeconds(10));
+            w.until(ExpectedConditions.elementToBeClickable(sendPayment));
+            sendPayment.click();
+        } catch (Exception e) {
+            // fallback: actions click
+            submitUsingActions();
+        }
+    }
+
+    /** Fallback: user-like action click (no JS) */
+    public void submitUsingActions() {
+        try {
+            Actions actions = new Actions(driver);
+            actions.moveToElement(sendPayment).pause(Duration.ofMillis(100)).click().perform();
+        } catch (Exception e) {
+            // last resort: ENTER on the button
+            submitUsingEnter();
+        }
+    }
+
+    /** Final non-JS fallback: send ENTER while focused on button */
+    public void submitUsingEnter() {
+        try {
+            sendPayment.sendKeys(Keys.ENTER);
+        } catch (Exception ignored) {}
+    }
+
+    public String getConfirmation(){
+        try { return getText(confirmationTitle); } catch (Exception e) { return ""; }
+    }
+
+    public boolean hasValidationError(){ try { return errorPanel.isDisplayed(); } catch(Exception e){ return false; } }
+
+    public String getFromAccountTextSafe() {
+        try {
+            Select s = new Select(driver.findElement(By.id("fromAccountId")));
+            return s.getFirstSelectedOption().getText().trim();
+        } catch (Exception e1) {
+            try {
+                Select s = new Select(driver.findElement(By.name("fromAccountId")));
+                return s.getFirstSelectedOption().getText().trim();
+            } catch (Exception e2) {
+                return "";
+            }
+        }
+    }
+
+    public void clearAll() {
+        try {
+            payeeName.clear(); payeeAddress.clear(); payeeCity.clear(); payeeState.clear();
+            payeeZip.clear(); payeePhone.clear(); payeeAccount.clear(); payeeVerify.clear(); amount.clear();
+        } catch (Exception ignored) {}
+    }
+
+    public String getErrorTextSafe() { try { return getText(errorPanel);} catch(Exception e){ return ""; } }
+
+    /** Read #rightPanel text at time-of-call */
+    public String getRightPanelText() {
+        try {
+            WebElement rp = driver.findElement(By.cssSelector("#rightPanel"));
+            return rp.getText();
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    /**
+     * Wait up to `seconds` for either:
+     *  - the title element to contain "Complete" (e.g. "Bill Payment Complete"), OR
+     *  - the details node containing "Bill Payment to" and the payee text.
+     *
+     * Returns the #rightPanel text if found, otherwise empty string.
+     */
+    public String waitForConfirmationPanel(int seconds, String expectedPayeeLowercase) {
+        WebDriverWait localWait = new WebDriverWait(driver, Duration.ofSeconds(seconds));
+        try {
+            // wait until either the title contains 'Complete' OR the details with 'Bill Payment to' appears
+            localWait.until(d -> {
+                try {
+                    // check title
+                    java.util.List<WebElement> titles = d.findElements(By.cssSelector("#rightPanel .title"));
+                    for (WebElement t : titles) {
+                        if (t.isDisplayed() && t.getText().toLowerCase().contains("complete")) {
+                            return true;
+                        }
+                    }
+                    // check details containing "Bill Payment to"
+                    java.util.List<WebElement> details = d.findElements(By.xpath("//*[@id='rightPanel']//*[contains(normalize-space(),'Bill Payment to')]"));
+                    for (WebElement det : details) {
+                        if (det.isDisplayed()) {
+                            String txt = det.getText().toLowerCase();
+                            if (txt.contains("bill payment to") && (expectedPayeeLowercase == null || expectedPayeeLowercase.isBlank() || txt.contains(expectedPayeeLowercase))) {
+                                return true;
+                            }
+                        }
+                    }
+                    return false;
+                } catch (StaleElementReferenceException se) {
+                    return false;
+                }
+            });
+
+            // when condition satisfied, return the current rightPanel text
+            return getRightPanelText();
+        } catch (TimeoutException te) {
+            return "";
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    public void selectFromAccountByVisibleTextOrIndex(String visibleText, Integer index) {
+        try {
+            WebElement selectEl = driver.findElement(By.id("fromAccountId"));
+            Select sel = new Select(selectEl);
+            if (visibleText != null && !visibleText.isBlank()) {
+                sel.selectByVisibleText(visibleText);
+            } else if (index != null) {
+                sel.selectByIndex(index);
+            }
+        } catch (NoSuchElementException e1) {
+            try {
+                WebElement selectEl = driver.findElement(By.name("fromAccountId"));
+                Select sel = new Select(selectEl);
+                if (visibleText != null && !visibleText.isBlank()) {
+                    sel.selectByVisibleText(visibleText);
+                } else if (index != null) {
+                    sel.selectByIndex(index);
+                }
+            } catch (Exception ignored) {}
+        } catch (Exception ignored) {}
+    }
+
+    /**
+     * Wait up to `seconds` for either a confirmation title to appear or an error panel to appear.
+     * Returns "confirmation", "error", or "timeout".
+     */
+    public String waitForConfirmationOrError(int seconds) {
+        WebDriverWait localWait = new WebDriverWait(driver, Duration.ofSeconds(seconds));
+        try {
+            localWait.until(d -> {
+                try {
+                    boolean conf = d.findElements(By.cssSelector("#rightPanel .title")).stream()
+                            .anyMatch(WebElement::isDisplayed);
+                    boolean err = d.findElements(By.cssSelector("#rightPanel .error")).stream()
+                            .anyMatch(WebElement::isDisplayed);
+                    return conf || err;
+                } catch (StaleElementReferenceException se) {
+                    return false;
+                }
+            });
+
+            if (!driver.findElements(By.cssSelector("#rightPanel .title")).isEmpty()
+                    && driver.findElement(By.cssSelector("#rightPanel .title")).isDisplayed()) {
+                return "confirmation";
+            }
+            if (!driver.findElements(By.cssSelector("#rightPanel .error")).isEmpty()
+                    && driver.findElement(By.cssSelector("#rightPanel .error")).isDisplayed()) {
+                return "error";
+            }
+            return "timeout";
+        } catch (TimeoutException te) {
+            return "timeout";
+        } catch (Exception e) {
+            return "timeout";
+        }
+    }
+
+    /** Safely get inner HTML by locating the element and asking for attribute (no JS). */
+    public String dumpRightPanelHtmlSafe() {
+        try {
+            WebElement rp = driver.findElement(By.cssSelector("#rightPanel"));
+            // read attribute 'innerHTML' using getAttribute (works without JS)
+            String html = rp.getAttribute("innerHTML");
+            return html == null ? "" : html;
+        } catch (Exception e) {
+            return "(failed to read #rightPanel html: " + e.getClass().getSimpleName() + ")";
+        }
+    }
+
+    // 🔹 helper to check if confirmation contains payee name (short)
+    public boolean confirmationContainsPayee(String payee) {
+        try {
+            String payeeLower = payee == null ? "" : payee.toLowerCase();
+            String panel = waitForConfirmationPanel(10, payeeLower);
+            return panel.toLowerCase().contains(payeeLower);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public String dumpConfirmationText() {
+        try { return getRightPanelText(); } catch (Exception e) { return "(failed to read #rightPanel)"; }
+    }
+    public void closePopups() {
+        super.closePopupsIfAny();
+    }
+}
+
+
+

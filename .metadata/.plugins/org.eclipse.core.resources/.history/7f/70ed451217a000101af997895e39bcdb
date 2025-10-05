@@ -1,0 +1,243 @@
+/*package com.parabank.listeners;
+
+import com.parabank.managers.DriverManager;
+import com.parabank.utils.ConfigReader;
+import org.openqa.selenium.*;
+import org.testng.ITestContext;
+import org.testng.ITestListener;
+import org.testng.ITestResult;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
+
+ * Simple TestNG listener that logs test events and saves a screenshot on failure.
+ * Screenshot folder comes from config.properties (screenshot.path) with a timestamped file name.
+ 
+public class TestListener implements ITestListener {
+
+	@Override
+	public void onTestStart(ITestResult result) {
+		System.out.println("Starting Test: " + result.getName());
+	}
+
+	@Override
+	public void onTestSuccess(ITestResult result) {
+		System.out.println("Test Passed: " + result.getName());
+	}
+
+	@Override
+	public void onTestFailure(ITestResult result) {
+		System.out.println("Test Failed: " + result.getName());
+		takeScreenshot(result.getName());
+	}
+
+	@Override
+	public void onTestSkipped(ITestResult result) {
+		System.out.println("Test Skipped: " + result.getName());
+	}
+
+	@Override
+	public void onStart(ITestContext context) {
+		System.out.println("Starting Test Suite: " + context.getName());
+	}
+
+	@Override
+	public void onFinish(ITestContext context) {
+		System.out.println("Finished Test Suite: " + context.getName());
+	}
+
+	private void takeScreenshot(String testName) {
+		// Try to get the current driver
+		WebDriver driver;
+		try {
+			driver = DriverManager.getDriver();
+		} catch (IllegalStateException e) {
+			System.out.println("Driver not initialized, skipping screenshot for: " + testName);
+			return;
+		}
+
+		// If the session is already gone, don't error out
+		try {
+			if (driver instanceof HasCapabilities) {
+				if (((HasCapabilities) driver).getCapabilities() == null) {
+					System.out.println("Driver capabilities not available, skipping screenshot for: " + testName);
+					return;
+				}
+			}
+		} catch (Throwable ignored) {}
+
+		try {
+			File srcFile = ((TakesScreenshot) driver).getScreenshotAs(OutputType.FILE);
+
+			// Use screenshot.path from config; default to "screenshots/" if missing
+			String baseDir = ConfigReader.get("screenshot.path");
+			if (baseDir == null || baseDir.isBlank()) baseDir = "screenshots/";
+			String ts = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+			File destFile = new File(baseDir + testName + "_" + ts + ".png");
+
+			// Ensure folder exists
+			File parent = destFile.getParentFile();
+			if (parent != null && !parent.exists()) parent.mkdirs();
+
+			Files.copy(srcFile.toPath(), destFile.toPath());
+			System.out.println("Screenshot saved at: " + destFile.getAbsolutePath());
+		} catch (WebDriverException wde) {
+			System.out.println("Could not capture screenshot (session may be gone): " + wde.getClass().getSimpleName());
+		} catch (IOException ioe) {
+			ioe.printStackTrace();
+		} catch (Throwable t) {
+			System.out.println("Unexpected error taking screenshot: " + t.getMessage());
+		}
+	}
+}*/
+
+package com.parabank.listeners;
+
+import com.parabank.managers.DriverManager;
+import com.parabank.utils.ConfigReader;
+import org.openqa.selenium.*;
+import org.testng.ITestContext;
+import org.testng.ITestListener;
+import org.testng.ITestResult;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.logging.FileHandler;
+import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
+
+public class TestListener implements ITestListener {
+
+    private Logger logger;
+
+    @Override
+    public void onStart(ITestContext context) {
+        System.out.println("Starting Test Suite: " + context.getName());
+        initLogger(); // create logs/execution.log
+        logInfo("Suite started: " + context.getName());
+    }
+
+    @Override
+    public void onFinish(ITestContext context) {
+        System.out.println("Finished Test Suite: " + context.getName());
+        logInfo("Suite finished: " + context.getName());
+    }
+
+    @Override
+    public void onTestStart(ITestResult result) {
+        System.out.println("Starting Test: " + result.getName());
+        logInfo("Starting Test: " + result.getName());
+    }
+
+    @Override
+    public void onTestSuccess(ITestResult result) {
+        System.out.println("Test Passed: " + result.getName());
+        logInfo("Test Passed: " + result.getName());
+    }
+
+    @Override
+    public void onTestFailure(ITestResult result) {
+        System.out.println("Test Failed: " + result.getName());
+        logSevere("Test Failed: " + result.getName() + " - " + safeMsg(result.getThrowable()));
+        takeScreenshot(result.getName());
+    }
+
+    @Override
+    public void onTestSkipped(ITestResult result) {
+        System.out.println("Test Skipped: " + result.getName());
+        logInfo("Test Skipped: " + result.getName());
+    }
+
+    private void takeScreenshot(String testName) {
+        WebDriver driver;
+        try {
+            driver = DriverManager.getDriver();
+        } catch (IllegalStateException e) {
+            System.out.println("Driver not initialized, skipping screenshot for: " + testName);
+            logWarn("Driver not initialized, skipping screenshot for: " + testName);
+            return;
+        }
+
+        try {
+            if (driver instanceof HasCapabilities) {
+                if (((HasCapabilities) driver).getCapabilities() == null) {
+                    System.out.println("Driver capabilities not available, skipping screenshot for: " + testName);
+                    logWarn("Driver capabilities not available, skipping screenshot for: " + testName);
+                    return;
+                }
+            }
+        } catch (Throwable ignored) {}
+
+        try {
+            File srcFile = ((TakesScreenshot) driver).getScreenshotAs(OutputType.FILE);
+
+            String baseDir = ConfigReader.get("screenshot.path");
+            if (baseDir == null || baseDir.isBlank()) baseDir = "screenshots";
+            ensureDir(baseDir);
+
+            String ts = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+            File destFile = new File(baseDir + File.separator + testName + "_" + ts + ".png");
+
+            Files.copy(srcFile.toPath(), destFile.toPath());
+            String msg = "Screenshot saved at: " + destFile.getAbsolutePath();
+            System.out.println(msg);
+            logInfo(msg);
+        } catch (WebDriverException wde) {
+            String msg = "Could not capture screenshot (session may be gone): " + wde.getClass().getSimpleName();
+            System.out.println(msg);
+            logWarn(msg);
+        } catch (IOException ioe) {
+            ioe.printStackTrace();
+            logSevere("IOException saving screenshot: " + ioe.getMessage());
+        } catch (Throwable t) {
+            String msg = "Unexpected error taking screenshot: " + t.getMessage();
+            System.out.println(msg);
+            logSevere(msg);
+        }
+    }
+
+    private void initLogger() {
+        try {
+            String logsDir = "logs";
+            ensureDir(logsDir);
+            if (!isEmptyDir(logsDir)) {
+                // wipe old log(s) so each run is clean
+                Files.walk(Path.of(logsDir))
+                        .filter(p -> !p.toFile().isDirectory())
+                        .forEach(p -> { try { Files.deleteIfExists(p); } catch (Exception ignored) {} });
+            }
+
+            logger = Logger.getLogger("RunLogger");
+            logger.setUseParentHandlers(false);
+            for (var h : logger.getHandlers()) logger.removeHandler(h);
+
+            FileHandler fh = new FileHandler(logsDir + File.separator + "execution.log", false);
+            fh.setFormatter(new SimpleFormatter());
+            logger.addHandler(fh);
+        } catch (IOException e) {
+            System.out.println("Could not create log file: " + e.getMessage());
+        }
+    }
+
+    private void ensureDir(String dir) {
+        try { Files.createDirectories(Path.of(dir)); } catch (Exception ignored) {}
+    }
+
+    private boolean isEmptyDir(String dir) {
+        try (var s = Files.list(Path.of(dir))) { return s.findAny().isEmpty(); } catch (Exception e) { return true; }
+    }
+
+    private void logInfo(String m)  { if (logger != null) logger.info(m); }
+    private void logWarn(String m)  { if (logger != null) logger.warning(m); }
+    private void logSevere(String m){ if (logger != null) logger.severe(m); }
+
+    private String safeMsg(Throwable t) { return t == null ? "" : t.getMessage(); }
+}

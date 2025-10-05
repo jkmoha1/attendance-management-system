@@ -1,0 +1,226 @@
+/*package com.parabank.pages;
+
+import java.time.Duration;
+
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.support.FindBy;
+import org.openqa.selenium.support.PageFactory;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.Select;
+import org.openqa.selenium.support.ui.WebDriverWait;
+
+public class BillPayPage extends BasePage {
+    @FindBy(name="payee.name") private WebElement payeeName;
+    @FindBy(name="payee.address.street") private WebElement payeeAddress;
+    @FindBy(name="payee.address.city") private WebElement payeeCity;
+    @FindBy(name="payee.address.state") private WebElement payeeState;
+    @FindBy(name="payee.address.zipCode") private WebElement payeeZip;
+    @FindBy(name="payee.phoneNumber") private WebElement payeePhone;
+    @FindBy(name="payee.accountNumber") private WebElement payeeAccount;
+    @FindBy(name="verifyAccount") private WebElement payeeVerify;
+    @FindBy(name="amount") private WebElement amount;
+    @FindBy(css="input[value='Send Payment']") private WebElement sendPayment;
+    @FindBy(css="#rightPanel .title") private WebElement confirmationTitle;
+    @FindBy(css="#rightPanel .error") private WebElement errorPanel;
+    @FindBy(css="#rightPanel") private WebElement rightPanel;
+    
+    public BillPayPage(WebDriver driver){ super(driver); PageFactory.initElements(driver,this);}    
+
+    public void fillPayee(String n,String a,String c,String s,String z,String p,String acc,String amt){
+        type(payeeName,n); type(payeeAddress,a); type(payeeCity,c); type(payeeState,s); type(payeeZip,z);
+        type(payeePhone,p); type(payeeAccount,acc); type(payeeVerify,acc); type(amount,amt);
+    }
+    public void submit(){ click(sendPayment);}    
+    public String getConfirmation(){ return getText(confirmationTitle);}    
+    public boolean hasValidationError(){ try { return errorPanel.isDisplayed(); } catch(Exception e){ return false; } }
+    
+    public String getFromAccountTextSafe() {
+        try {
+            Select s = new Select(driver.findElement(By.id("fromAccountId")));
+            return s.getFirstSelectedOption().getText().trim();
+        } catch (Exception e1) {
+            try {
+                Select s = new Select(driver.findElement(By.name("fromAccountId")));
+                return s.getFirstSelectedOption().getText().trim();
+            } catch (Exception e2) {
+                return "";
+            }
+        }
+    }
+    public void clearAll() {
+    	try {
+    	payeeName.clear(); payeeAddress.clear(); payeeCity.clear(); payeeState.clear();
+    	payeeZip.clear(); payeePhone.clear(); payeeAccount.clear(); payeeVerify.clear(); amount.clear();
+    	} catch (Exception ignored) {}
+    	}
+
+
+    	public String getErrorTextSafe() { try { return getText(errorPanel);} catch(Exception e){ return ""; } }
+
+
+    	public String getRightPanelText() { try { return getText(rightPanel);} catch(Exception e){ return ""; } }
+    	
+    	  // 🔹 New helper to check if confirmation contains payee name
+        public boolean confirmationContainsPayee(String payee) {
+            try {
+                WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+                WebElement details = wait.until(ExpectedConditions.visibilityOfElementLocated(
+                    By.xpath("//*[@id='rightPanel']//*[contains(normalize-space(),'Bill Payment to')]")
+                ));
+                return details.getText().toLowerCase().contains(payee.toLowerCase());
+            } catch (Exception e) {
+                return false;
+            }
+            
+        }
+        public String dumpConfirmationText() {
+            try { return getRightPanelText(); } catch (Exception e) { return "(failed to read #rightPanel)"; }
+        }
+}*/
+
+package com.parabank.pages;
+
+import java.time.Duration;
+import java.util.List;
+
+import org.openqa.selenium.By;
+import org.openqa.selenium.NoSuchElementException;
+import org.openqa.selenium.StaleElementReferenceException;
+import org.openqa.selenium.TimeoutException;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.support.FindBy;
+import org.openqa.selenium.support.PageFactory;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.Select;
+import org.openqa.selenium.support.ui.WebDriverWait;
+
+public class BillPayPage extends BasePage {
+    @FindBy(name="payee.name") private WebElement payeeName;
+    @FindBy(name="payee.address.street") private WebElement payeeAddress;
+    @FindBy(name="payee.address.city") private WebElement payeeCity;
+    @FindBy(name="payee.address.state") private WebElement payeeState;
+    @FindBy(name="payee.address.zipCode") private WebElement payeeZip;
+    @FindBy(name="payee.phoneNumber") private WebElement payeePhone;
+    @FindBy(name="payee.accountNumber") private WebElement payeeAccount;
+    @FindBy(name="verifyAccount") private WebElement payeeVerify;
+    @FindBy(name="amount") private WebElement amount;
+    @FindBy(css="input[value='Send Payment']") private WebElement sendPayment;
+    @FindBy(css="#rightPanel .title") private WebElement confirmationTitle;
+    @FindBy(css="#rightPanel .error") private WebElement errorPanel;
+
+    public BillPayPage(WebDriver driver){
+        super(driver);
+        PageFactory.initElements(driver,this);
+    }
+
+    /** Fill all payee details */
+    public void fillPayee(String n,String a,String c,String s,String z,String p,String acc,String amt){
+        type(payeeName,n); type(payeeAddress,a); type(payeeCity,c); type(payeeState,s); type(payeeZip,z);
+        type(payeePhone,p); type(payeeAccount,acc); type(payeeVerify,acc); type(amount,amt);
+    }
+
+    /** Submit button with explicit wait */
+    public void submit() {
+        WebDriverWait w = new WebDriverWait(driver, Duration.ofSeconds(10));
+        w.until(ExpectedConditions.elementToBeClickable(sendPayment));
+        sendPayment.click();
+    }
+
+    /** Expose BasePage's popup handler */
+    public void closePopups() {
+        super.closePopupsIfAny();
+    }
+
+    /** Check if error panel is visible */
+    public boolean hasValidationError(){ 
+        try { return errorPanel.isDisplayed(); } catch(Exception e){ return false; } 
+    }
+
+    /** Return error panel text safely */
+    public String getErrorTextSafe() { 
+        try { return getText(errorPanel);} catch(Exception e){ return ""; } 
+    }
+
+    /** Get currently selected account text safely */
+    public String getFromAccountTextSafe() {
+        try {
+            Select s = new Select(driver.findElement(By.id("fromAccountId")));
+            return s.getFirstSelectedOption().getText().trim();
+        } catch (Exception e1) {
+            try {
+                Select s = new Select(driver.findElement(By.name("fromAccountId")));
+                return s.getFirstSelectedOption().getText().trim();
+            } catch (Exception e2) {
+                return "";
+            }
+        }
+    }
+
+    /** Select account by visible text or index */
+    public void selectFromAccountByVisibleTextOrIndex(String visibleText, Integer index) {
+        try {
+            WebElement selectEl = driver.findElement(By.id("fromAccountId"));
+            Select sel = new Select(selectEl);
+            if (visibleText != null && !visibleText.isBlank()) {
+                sel.selectByVisibleText(visibleText);
+            } else if (index != null) {
+                sel.selectByIndex(index);
+            }
+        } catch (NoSuchElementException e1) {
+            try {
+                WebElement selectEl = driver.findElement(By.name("fromAccountId"));
+                Select sel = new Select(selectEl);
+                if (visibleText != null && !visibleText.isBlank()) {
+                    sel.selectByVisibleText(visibleText);
+                } else if (index != null) {
+                    sel.selectByIndex(index);
+                }
+            } catch (Exception ignored) {}
+        } catch (Exception ignored) {}
+    }
+
+    /**
+     * Wait up to `seconds` for confirmation:
+     * - Either the title contains "Complete"
+     * - Or details contain "Bill Payment to" with the payee
+     */
+    public String waitForConfirmationPanel(int seconds, String expectedPayeeLowercase) {
+        WebDriverWait localWait = new WebDriverWait(driver, Duration.ofSeconds(seconds));
+        try {
+            localWait.until(d -> {
+                try {
+                    // check title
+                    List<WebElement> titles = d.findElements(By.cssSelector("#rightPanel .title"));
+                    for (WebElement t : titles) {
+                        if (t.isDisplayed() && t.getText().toLowerCase().contains("complete")) {
+                            return true;
+                        }
+                    }
+                    // check details
+                    List<WebElement> details = d.findElements(
+                        By.xpath("//*[@id='rightPanel']//*[contains(normalize-space(),'Bill Payment to')]"));
+                    for (WebElement det : details) {
+                        if (det.isDisplayed()) {
+                            String txt = det.getText().toLowerCase();
+                            if (txt.contains("bill payment to") && 
+                               (expectedPayeeLowercase == null || expectedPayeeLowercase.isBlank() 
+                                || txt.contains(expectedPayeeLowercase))) {
+                                return true;
+                            }
+                        }
+                    }
+                    return false;
+                } catch (StaleElementReferenceException se) {
+                    return false;
+                }
+            });
+
+            return driver.findElement(By.cssSelector("#rightPanel")).getText();
+        } catch (TimeoutException te) {
+            return "";
+        }
+    }
+}

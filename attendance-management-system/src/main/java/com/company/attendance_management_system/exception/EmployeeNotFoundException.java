@@ -1,0 +1,9 @@
+package com.company.attendance_management_system.exception;
+
+@SuppressWarnings("serial")
+public class EmployeeNotFoundException extends Exception {
+    public EmployeeNotFoundException(String message) {
+        super(message);
+    }
+}
+

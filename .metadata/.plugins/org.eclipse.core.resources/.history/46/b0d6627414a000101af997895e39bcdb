@@ -1,0 +1,117 @@
+package com.parabank.managers;
+
+import com.aventstack.extentreports.ExtentReports;
+import com.aventstack.extentreports.reporter.ExtentSparkReporter;
+import com.parabank.managers.DriverManager;
+
+import org.openqa.selenium.OutputType;
+import org.openqa.selenium.TakesScreenshot;
+import org.openqa.selenium.WebDriver;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.*;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.logging.*;
+
+public class ResultManager {
+
+    private static ResultManager INSTANCE;
+
+    private ExtentReports extent;
+    private Logger logger;
+
+    private String reportsDir = "test-output";
+    private String screenshotsDir = "screenshots";
+    private String logsDir = "logs";
+    private String logFileName = "execution.log";
+
+    private ResultManager() {}
+
+    public static synchronized ResultManager getInstance() {
+        if (INSTANCE == null) INSTANCE = new ResultManager();
+        return INSTANCE;
+    }
+
+    public void init() {
+        wipeDir(reportsDir);
+        wipeDir(screenshotsDir);
+        wipeDir(logsDir);
+
+        mkdirs(reportsDir);
+        mkdirs(screenshotsDir);
+        mkdirs(logsDir);
+
+        String reportPath = reportsDir + File.separator + "index.html";
+        ExtentSparkReporter spark = new ExtentSparkReporter(reportPath);
+        extent = new ExtentReports();
+        extent.attachReporter(spark);
+
+        logger = Logger.getLogger("RunLogger");
+        logger.setUseParentHandlers(false);
+        for (Handler h : logger.getHandlers()) logger.removeHandler(h);
+
+        try {
+            FileHandler fh = new FileHandler(logsDir + File.separator + logFileName, false);
+            fh.setFormatter(new SimpleFormatter());
+            logger.addHandler(fh);
+        } catch (IOException e) {
+            System.out.println("Could not create log file: " + e.getMessage());
+        }
+    }
+
+    public ExtentReports extent() {
+        if (extent == null) init();
+        return extent;
+    }
+
+    public Logger logger() {
+        if (logger == null) init();
+        return logger;
+    }
+
+    public void flush() {
+        if (extent != null) extent.flush();
+    }
+
+    public String takeScreenshot(String testName) {
+        WebDriver driver = null;
+        try { driver = DriverManager.getDriver(); } catch (Exception ignored) {}
+        if (driver == null) return null;
+
+        try {
+            File src = ((TakesScreenshot) driver).getScreenshotAs(OutputType.FILE);
+            String ts = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+            File dest = new File(screenshotsDir, testName + "_" + ts + ".png");
+            Files.copy(src.toPath(), dest.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            return dest.getAbsolutePath();
+        } catch (Throwable t) {
+            logWarn("Screenshot failed for " + testName + ": " + t.getMessage());
+            return null;
+        }
+    }
+
+    public void logInfo(String msg) { logger().info(msg); }
+    public void logWarn(String msg) { logger().warning(msg); }
+    public void logSevere(String msg) { logger().severe(msg); }
+
+    public String getReportsDir() { return reportsDir; }
+    public String getScreenshotsDir() { return screenshotsDir; }
+    public String getLogsDir() { return logsDir; }
+
+    private void wipeDir(String dir) {
+        try {
+            Path path = Path.of(dir);
+            if (Files.exists(path)) {
+                Files.walk(path)
+                        .sorted((a,b) -> b.compareTo(a))
+                        .forEach(p -> { try { Files.deleteIfExists(p); } catch (Exception ignored) {} });
+            }
+        } catch (Exception ignored) {}
+    }
+
+    private void mkdirs(String dir) {
+        try { Files.createDirectories(Path.of(dir)); } catch (Exception ignored) {}
+    }
+}

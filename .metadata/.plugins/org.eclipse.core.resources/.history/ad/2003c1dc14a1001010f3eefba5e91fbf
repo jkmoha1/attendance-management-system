@@ -1,0 +1,26 @@
+// new file: com/parabank/pages/ContactUsPage.java
+package com.parabank.pages;
+
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.support.FindBy;
+import org.openqa.selenium.support.PageFactory;
+
+public class ContactUsPage extends BasePage {
+    @FindBy(id="name") private WebElement name;
+    @FindBy(id="email") private WebElement email;
+    @FindBy(id="phone") private WebElement phone;
+    @FindBy(id="message") private WebElement message;
+    @FindBy(css="input[value='Send to Customer Care']") private WebElement sendBtn;
+
+    public ContactUsPage(WebDriver driver){ super(driver); PageFactory.initElements(driver, this); }
+
+    public void fill(String n, String e, String p, String m){
+        type(name,n); type(email,e); type(this.phone,p); type(message,m);
+    }
+    public void submit(){ click(sendBtn); }
+
+    public boolean isSubmitted(){
+        return driver.getPageSource().toLowerCase().contains("customer care");
+    }
+}

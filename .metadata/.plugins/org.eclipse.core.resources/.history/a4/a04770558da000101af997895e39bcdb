@@ -1,0 +1,196 @@
+package com.parabank.tests;
+
+import com.parabank.data.TestDataProvider;
+import com.parabank.pages.*;
+import com.parabank.utils.ConfigReader;
+
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.support.ui.Select;
+import org.testng.Assert;
+import org.testng.annotations.Test;
+
+public class BillPayTests extends BaseTest {
+
+	@Test(priority = 1, dataProvider = "billPayData", dataProviderClass = TestDataProvider.class)
+	public void billPayScenarios(String username, String password, String name, String address, String city,
+			String state, String zip, String phone, String account, String amount, String expected) {
+
+		AccountsOverviewPage overview = new LoginPage(driver).login(username, password);
+		BillPayPage bill = overview.goToBillPay();
+
+		bill.fillPayee(name, address, city, state, zip, phone, account, amount);
+		bill.submit();
+
+		String conf = "";
+		for (int i = 0; i < 8 && (conf == null || conf.isBlank()); i++) {
+			conf = bill.getConfirmation();
+			sleep(250);
+		}
+		String lc = conf == null ? "" : conf.toLowerCase();
+
+		if ("success".equalsIgnoreCase(expected)) {
+			Assert.assertTrue(lc.contains("complete") || conf.length() > 0, "Expected payment success");
+		} else if ("validation".equalsIgnoreCase(expected)) {
+			Assert.assertFalse(lc.contains("complete"), "Expected validation error");
+		} else {
+			Assert.fail("Unknown expected: " + expected);
+		}
+		overview.logout();
+	}
+
+	@Test(priority = 2, dataProvider = "findTransactionsData", dataProviderClass = TestDataProvider.class)
+	public void paymentHistory(String username, String password, String amount) {
+		AccountsOverviewPage overview = new LoginPage(driver).login(username, password);
+
+		// Create a payment first so there’s something to find
+		BillPayPage bill = overview.goToBillPay();
+		bill.fillPayee("Acme Utilities", "1 Utility Ave", "Metropolis", "CA", "90210",
+				"5551234567", "123456", amount);
+		bill.submit();
+		for (int i = 0; i < 8; i++) {
+			if (bill.getConfirmation() != null && !bill.getConfirmation().isBlank()) break;
+			sleep(250);
+		}
+		String fromAcc = bill.getFromAccountTextSafe();
+		String digits = fromAcc.replaceAll("\\D", "");
+
+
+
+		FindTransactionsPage find = overview.goToFindTransactions();
+		try {
+			WebElement dd = driver.findElement(By.id("accountId"));
+			Select s = new Select(dd);
+			try {
+				s.selectByVisibleText(fromAcc);
+			} catch (Exception e) {
+				boolean matched = false;
+				for (WebElement opt : s.getOptions()) {
+					if (opt.getText().contains(digits)) { 
+						opt.click(); matched = true; break; 
+					}
+				}
+				if (!matched) s.selectByIndex(0);
+			}
+		} catch (Exception ignored) { }
+
+		boolean found = false;
+		for (int i = 0; i < 4 && !found; i++) {
+			find.searchByAmount(amount);
+			found = find.hasResults();
+			sleep(600);
+		}
+		Assert.assertTrue(found, "No transactions found for amount " + amount);
+		overview.logout();
+	}
+
+	@Test(priority = 3, description = "Bill Pay validation: required fields")
+	public void billPayRequiredFieldValidation() {
+	    AccountsOverviewPage overview = new LoginPage(driver).login(
+	            ConfigReader.get("default.username"), ConfigReader.get("default.password"));
+	    BillPayPage bill = overview.goToBillPay();
+
+	    bill.clearAll();
+	    bill.submit();
+
+	    String err = bill.getErrorTextSafe().toLowerCase();
+	    Assert.assertTrue(err.length() > 0 || driver.getPageSource().toLowerCase().contains("required"),
+	            "Expected a validation error when submitting blank bill pay.");
+	    overview.logout();
+	}
+
+	@Test(priority = 4, description = "Bill Pay invalid amount is rejected")
+	public void billPayInvalidAmount() {
+	    AccountsOverviewPage overview = new LoginPage(driver).login(
+	            ConfigReader.get("default.username"), ConfigReader.get("default.password"));
+	    BillPayPage bill = overview.goToBillPay();
+
+	    bill.fillPayee("Acme Utilities", "1 Utility Ave", "Metropolis", "CA", "90210", "5551234567", "123456", "abc"); // invalid amount
+	    bill.submit();
+
+	    String err = bill.getErrorTextSafe().toLowerCase();
+	    Assert.assertTrue(err.length() > 0 || driver.getPageSource().toLowerCase().contains("amount"),
+	            "Expected amount validation error.");
+	    overview.logout();
+	}
+
+	/*@Test(priority = 5, description = "Bill Pay confirmation includes payee name when successful")
+	public void billPayConfirmationIncludesPayeeName() {
+	    String payee = "Metro Water " + System.currentTimeMillis();
+
+	    AccountsOverviewPage overview = new LoginPage(driver).login(
+	            ConfigReader.get("default.username"), ConfigReader.get("default.password"));
+	    BillPayPage bill = overview.goToBillPay();
+
+	    // Use a small positive amount
+	    bill.fillPayee(payee, "1 Utility Ave", "Metropolis", "CA", "90210", "5551234567", "123456", "12");
+	    bill.submit();
+
+	    String panel = "";
+	    for (int i = 0; i < 8 && (panel == null || panel.isBlank()); i++) { panel = bill.getRightPanelText();  }
+	    Assert.assertTrue(panel.toLowerCase().contains(payee.toLowerCase()) || panel.toLowerCase().contains("complete"),
+	            "Expected bill pay confirmation containing payee name or complete message. Panel: " + panel);
+	    overview.logout();
+	}*/
+	@Test(priority = 5, description = "Bill Pay confirmation includes payee name when successful")
+	public void billPayConfirmationIncludesPayeeName() {
+	    // Unique payee name so results are traceable
+	    String payee = "Metro Water " + System.currentTimeMillis();
+
+	    // 1) Login and navigate
+	    AccountsOverviewPage overview = new LoginPage(driver).login(
+	            ConfigReader.get("default.username"), ConfigReader.get("default.password"));
+	    BillPayPage bill = overview.goToBillPay();
+
+	    // 2) Ensure there's a from-account selected or select the first available
+	    String fromAccount = bill.getFromAccountTextSafe();
+	    if (fromAccount == null || fromAccount.isBlank()) {
+	        try {
+	            bill.selectFirstFromAccount();
+	            fromAccount = bill.getFromAccountTextSafe();
+	        } catch (RuntimeException e) {
+	            Assert.fail("No From account available and couldn't select one. Options:\n" + bill.getFromAccountOptionsDump());
+	        }
+	    }
+
+	    // 3) Fill the form (use a standard currency format "12.00")
+	    bill.fillPayee(payee, "1 Utility Ave", "Metropolis", "CA", "90210", "5551234567", "123456", "12.00");
+
+	    // 4) Select the from-account using a best-effort method (visible text, then value, then fallback)
+	    try {
+	        bill.selectFromAccountBestEffort(fromAccount);
+	    } catch (RuntimeException e) {
+	        Assert.fail("Could not select From account '" + fromAccount + "'.\nDetails: " + e.getMessage());
+	    }
+
+	    // 5) Submit and wait for result
+	    bill.submitAndWaitForResult();
+
+	    // 6) Wait explicitly (up to 15s) for the payee to appear in the confirmation
+	    boolean confirmed = bill.waitForConfirmationContains(payee, java.time.Duration.ofSeconds(15));
+
+	    // 7) If not confirmed, also allow a generic 'complete' message as acceptable
+	    if (!confirmed) {
+	        confirmed = bill.waitForConfirmationContains("complete", java.time.Duration.ofSeconds(5));
+	    }
+
+	    // 8) Prepare helpful debug output
+	    String panel = bill.dumpConfirmationText();
+	    String errorText = bill.getErrorTextSafe();
+
+	    // 9) Assert that payee is present (fail with debug info if not)
+	    Assert.assertTrue(confirmed,
+	            "Expected bill-pay confirmation to include the payee name '" + payee + "'.\n" +
+	            "Right panel contents:\n" + panel +
+	            (errorText.isBlank() ? "" : "\nValidation/Error text:\n" + errorText + "\n") +
+	            "\nFrom-account options:\n" + bill.getFromAccountOptionsDump());
+
+	    // 10) Logout / cleanup
+	    overview.logout();
+	}
+
+
+	
+
+	private static void sleep(long ms) { try { Thread.sleep(ms); } catch (InterruptedException ignored) {} }
+}

@@ -1,0 +1,16 @@
+package Assignment;
+
+public class Reverseanumber {
+
+	public static void main(String[] args) {
+		// Reverse a number (% / = operators
+		
+		int a=1,b=2,c=3,d=4;
+		
+		int x=(a+b+c+d);
+		
+	System.out.println(x);
+
+	}
+
+}

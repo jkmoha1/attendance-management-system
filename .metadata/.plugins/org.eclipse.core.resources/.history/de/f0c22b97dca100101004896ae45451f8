@@ -1,0 +1,41 @@
+package com.company.attendance_management_system.model;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
+public class AttendanceRecord {
+    private final int recordId;
+    private final int employeeId;
+    private final LocalDate date;
+    private LocalDateTime clockInTime;
+    private LocalDateTime clockOutTime;
+    private Double hoursWorked;
+
+    public AttendanceRecord(int recordId, int employeeId, LocalDate date) {
+        this.recordId = recordId;
+        this.employeeId = employeeId;
+        this.date = date;
+    }
+
+    public int getRecordId() { return recordId; }
+    public int getEmployeeId() { return employeeId; }
+    public LocalDate getDate() { return date; }
+    public LocalDateTime getClockInTime() { return clockInTime; }
+    public void setClockInTime(LocalDateTime clockInTime) { this.clockInTime = clockInTime; }
+    public LocalDateTime getClockOutTime() { return clockOutTime; }
+    public void setClockOutTime(LocalDateTime clockOutTime) { this.clockOutTime = clockOutTime; }
+    public Double getHoursWorked() { return hoursWorked; }
+    public void setHoursWorked(Double hoursWorked) { this.hoursWorked = hoursWorked; }
+
+    @Override
+    public String toString() {
+        return "AttendanceRecord{" +
+                "id=" + recordId +
+                ", emp=" + employeeId +
+                ", date=" + date +
+                ", in=" + clockInTime +
+                ", out=" + clockOutTime +
+                ", hours=" + hoursWorked +
+                '}';
+    }
+}

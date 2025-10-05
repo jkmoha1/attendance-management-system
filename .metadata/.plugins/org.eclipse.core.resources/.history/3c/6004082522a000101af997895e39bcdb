@@ -1,0 +1,80 @@
+package com.parabank.tests;
+try {
+new Select(driver.findElement(By.id("fromAccountId"))).selectByIndex(0);
+new Select(driver.findElement(By.id("toAccountId"))).selectByIndex(0);
+} catch (Exception ignored) {}
+
+
+transfer.enterAmount(amount); // may be non-numeric or blank
+transfer.submit();
+
+
+String err = transfer.getErrorTextSafe().toLowerCase();
+String conf = transfer.getConfirmation() == null ? "" : transfer.getConfirmation().toLowerCase();
+Assert.assertTrue(err.length() > 0 || !conf.contains("complete"),
+"Expected validation failure for amount: " + amount);
+overview.logout();
+}
+
+
+@Test(priority = 4, description = "Transfer insufficient funds is rejected")
+public void transferInsufficientFunds() {
+String big = "99999999";
+
+
+AccountsOverviewPage overview = new LoginPage(driver).login(
+ConfigReader.get("default.username"), ConfigReader.get("default.password"));
+TransferFundsPage transfer = overview.goToTransfer();
+
+
+try {
+Select from = new Select(driver.findElement(By.id("fromAccountId")));
+Select to = new Select(driver.findElement(By.id("toAccountId")));
+if (from.getOptions().size() >= 2) { from.selectByIndex(0); to.selectByIndex(1); }
+else { from.selectByIndex(0); to.selectByIndex(0); }
+} catch (Exception ignored) {}
+
+
+transfer.enterAmount(big);
+transfer.submit();
+
+
+String err = transfer.getErrorTextSafe().toLowerCase();
+String conf = transfer.getConfirmation() == null ? "" : transfer.getConfirmation().toLowerCase();
+
+
+Assert.assertTrue(err.contains("insufficient") || !conf.contains("complete"),
+"Expected insufficient funds error or no completion.");
+overview.logout();
+}
+
+
+@Test(priority = 5, description = "Transfer success shows explicit confirmation text when valid")
+public void transferShowsConfirmationMessage() {
+AccountsOverviewPage overview = new LoginPage(driver).login(
+ConfigReader.get("default.username"), ConfigReader.get("default.password"));
+TransferFundsPage transfer = overview.goToTransfer();
+
+
+try {
+Select from = new Select(driver.findElement(By.id("fromAccountId")));
+Select to = new Select(driver.findElement(By.id("toAccountId")));
+if (from.getOptions().size() >= 2) { from.selectByIndex(0); to.selectByIndex(1); }
+else { from.selectByIndex(0); to.selectByIndex(0); }
+} catch (Exception ignored) {}
+
+
+transfer.enterAmount("10");
+transfer.submit();
+
+
+String conf = "";
+for (int i = 0; i < 8 && (conf == null || conf.isBlank()); i++) { conf = transfer.getConfirmation(); sleep(250); }
+Assert.assertTrue(conf != null && conf.toLowerCase().contains("transfer"),
+"Expected a transfer confirmation message, got: " + conf);
+overview.logout();
+}
+
+
+private static void sleep(long ms) { try { Thread.sleep(ms); } catch (InterruptedException ignored) {} }
+}

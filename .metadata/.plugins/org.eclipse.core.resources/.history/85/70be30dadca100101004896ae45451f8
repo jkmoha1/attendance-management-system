@@ -1,0 +1,46 @@
+package com.company.attendance_management_system.repository;
+
+import com.company.attendance_management_system.model.AttendanceRecord;
+
+import java.time.LocalDate;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
+
+public class AttendanceRepository {
+    private final Map<Integer, AttendanceRecord> records = new HashMap<>();
+    private final AtomicInteger idGenerator = new AtomicInteger(1);
+
+    public AttendanceRecord createRecord(int employeeId, LocalDate date) {
+        int id = idGenerator.getAndIncrement();
+        AttendanceRecord record = new AttendanceRecord(id, employeeId, date);
+        records.put(id, record);
+        return record;
+    }
+
+    public void addRecord(AttendanceRecord record) {
+        records.put(record.getRecordId(), record);
+    }
+
+    public List<AttendanceRecord> findRecordsByEmployeeId(int employeeId) {
+        return records.values().stream()
+                .filter(r -> r.getEmployeeId() == employeeId)
+                .sorted(Comparator.comparing(AttendanceRecord::getDate))
+                .collect(Collectors.toList());
+    }
+
+    public Optional<AttendanceRecord> findRecordByDateAndEmployee(int employeeId, LocalDate date) {
+        return records.values().stream()
+                .filter(r -> r.getEmployeeId() == employeeId && r.getDate().equals(date))
+                .findFirst();
+    }
+
+    public List<AttendanceRecord> getAllRecords() {
+        return new ArrayList<>(records.values());
+    }
+
+    public void clear() {
+        records.clear();
+        idGenerator.set(1);
+    }
+}

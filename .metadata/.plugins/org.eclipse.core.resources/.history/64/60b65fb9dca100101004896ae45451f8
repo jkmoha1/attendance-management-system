@@ -1,0 +1,42 @@
+package com.company.attendance_management_system.model;
+
+import java.time.LocalDate;
+
+public class LeaveRequest {
+    public enum Status { PENDING, APPROVED, REJECTED }
+
+    private final int requestId;
+    private final int employeeId;
+    private final LocalDate startDate;
+    private final LocalDate endDate;
+    private Status status;
+    private final String reason;
+
+    public LeaveRequest(int requestId, int employeeId, LocalDate startDate, LocalDate endDate, String reason) {
+        this.requestId = requestId;
+        this.employeeId = employeeId;
+        this.startDate = startDate;
+        this.endDate = endDate;
+        this.status = Status.PENDING;
+        this.reason = reason;
+    }
+
+    public int getRequestId() { return requestId; }
+    public int getEmployeeId() { return employeeId; }
+    public LocalDate getStartDate() { return startDate; }
+    public LocalDate getEndDate() { return endDate; }
+    public Status getStatus() { return status; }
+    public void setStatus(Status status) { this.status = status; }
+    public String getReason() { return reason; }
+
+    @Override
+    public String toString() {
+        return "LeaveRequest{" +
+                "id=" + requestId +
+                ", emp=" + employeeId +
+                ", " + startDate + "->" + endDate +
+                ", status=" + status +
+                ", reason='" + reason + '\'' +
+                '}';
+    }
+}

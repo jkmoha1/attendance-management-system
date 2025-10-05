@@ -1,0 +1,86 @@
+/*package com.parabank.pages;
+
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.support.FindBy;
+import org.openqa.selenium.support.PageFactory;
+
+public class FindTransactionsPage extends BasePage {
+    @FindBy(xpath="//input[@id='amount']") private WebElement amount;
+    @FindBy(xpath= "//button[@id='findByAmount']") private WebElement findBtn;
+
+    public FindTransactionsPage(WebDriver driver){ super(driver); PageFactory.initElements(driver,this);}    
+
+    public void searchByAmount(String amt){ amount.clear(); type(this.amount, amt); click(findBtn);}
+    public boolean hasResults(){ return driver.findElements(By.cssSelector("#transactionTable tbody tr")).size() > 0; }
+}*/
+
+package com.parabank.pages;
+
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.support.FindBy;
+import org.openqa.selenium.support.PageFactory;
+
+import java.math.BigDecimal;
+import java.text.DecimalFormat;
+import java.time.Duration;
+
+public class FindTransactionsPage extends BasePage {
+    @FindBy(xpath="//input[@id='amount']") private WebElement amount;
+    @FindBy(xpath= "//button[@id='findByAmount']") private WebElement findBtn;
+
+    // minimal: add a locator used for quick waits
+    private final By resultsRows = By.cssSelector("#transactionTable tbody tr");
+
+    public FindTransactionsPage(WebDriver driver){ super(driver); PageFactory.initElements(driver,this);}    
+
+    public void searchByAmount(String amt){
+        // type → click → short wait
+        amount.clear();
+        type(this.amount, amt);
+        click(findBtn);
+
+        // small, safe wait for rows to render
+        if (!waitForResults(3)) {
+            // retry with common numeric formats (e.g., "7.5" vs "7.50")
+            tryAlternateFormats(amt);
+        }
+    }
+
+    public boolean hasResults(){ 
+        return driver.findElements(By.cssSelector("#transactionTable tbody tr")).size() > 0; 
+    }
+
+    // ===== helper bits (tiny, internal) =====
+
+    private boolean waitForResults(int seconds) {
+        try {
+            new org.openqa.selenium.support.ui.WebDriverWait(driver, Duration.ofSeconds(seconds))
+                .until(d -> d.findElements(resultsRows).size() > 0);
+            return true;
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    private void tryAlternateFormats(String original) {
+        try {
+            BigDecimal bd = new BigDecimal(original);
+            String trimmed = bd.stripTrailingZeros().toPlainString();         // e.g., "7.5"
+            String twoDp   = new DecimalFormat("0.00").format(bd);            // e.g., "7.50"
+
+            for (String v : new String[]{trimmed, twoDp}) {
+                amount.clear();
+                amount.sendKeys(v);
+                click(findBtn);
+                if (waitForResults(3)) return;
+            }
+        } catch (Exception ignored) {
+            // if parsing fails, just keep original behavior
+        }
+    }
+}
+

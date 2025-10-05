@@ -1,0 +1,267 @@
+/*package com.parabank.listeners;
+
+import com.parabank.managers.DriverManager;
+import com.parabank.utils.ConfigReader;
+import org.openqa.selenium.*;
+import org.testng.ITestContext;
+import org.testng.ITestListener;
+import org.testng.ITestResult;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.*;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.logging.FileHandler;
+import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
+
+public class TestListener implements ITestListener {
+
+    private Logger logger;
+
+    @Override
+    public void onStart(ITestContext context) {
+        cleanDir("screenshots");
+        cleanDir("logs");
+        initLogger();
+        logInfo("Suite started: " + context.getName());
+        System.out.println("Starting Test Suite: " + context.getName());
+    }
+
+    @Override
+    public void onFinish(ITestContext context) {
+        logInfo("Suite finished: " + context.getName());
+        System.out.println("Finished Test Suite: " + context.getName());
+    }
+
+    @Override
+    public void onTestStart(ITestResult result) {
+        logInfo("Starting Test: " + result.getName());
+        System.out.println("Starting Test: " + result.getName());
+    }
+
+    @Override
+    public void onTestSuccess(ITestResult result) {
+        logInfo("Test Passed: " + result.getName());
+        System.out.println("Test Passed: " + result.getName());
+    }
+
+    @Override
+    public void onTestFailure(ITestResult result) {
+        logSevere("Test Failed: " + result.getName() + " - " + safeMsg(result.getThrowable()));
+        System.out.println("Test Failed: " + result.getName());
+        takeScreenshot(result.getName());
+    }
+
+    @Override
+    public void onTestSkipped(ITestResult result) {
+        logInfo("Test Skipped: " + result.getName());
+        System.out.println("Test Skipped: " + result.getName());
+    }
+
+    private void takeScreenshot(String testName) {
+        WebDriver driver;
+        try {
+            driver = DriverManager.getDriver();
+        } catch (IllegalStateException e) {
+            logWarn("Driver not initialized, skipping screenshot for: " + testName);
+            System.out.println("Driver not initialized, skipping screenshot for: " + testName);
+            return;
+        }
+
+        try {
+            if (driver instanceof HasCapabilities) {
+                if (((HasCapabilities) driver).getCapabilities() == null) {
+                    logWarn("Driver capabilities not available, skipping screenshot for: " + testName);
+                    System.out.println("Driver capabilities not available, skipping screenshot for: " + testName);
+                    return;
+                }
+            }
+        } catch (Throwable ignored) {}
+
+        try {
+            File srcFile = ((TakesScreenshot) driver).getScreenshotAs(OutputType.FILE);
+            String baseDir = ConfigReader.get("screenshot.path");
+            if (baseDir == null || baseDir.isBlank()) baseDir = "screenshots";
+            ensureDir(baseDir);
+
+            String ts = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+            File destFile = new File(baseDir + File.separator + testName + "_" + ts + ".png");
+            Files.copy(srcFile.toPath(), destFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+
+            String msg = "Screenshot saved at: " + destFile.getAbsolutePath();
+            logInfo(msg);
+            System.out.println(msg);
+        } catch (WebDriverException wde) {
+            String msg = "Could not capture screenshot (session may be gone): " + wde.getClass().getSimpleName();
+            logWarn(msg);
+            System.out.println(msg);
+        } catch (IOException ioe) {
+            logSevere("IOException saving screenshot: " + ioe.getMessage());
+            ioe.printStackTrace();
+        } catch (Throwable t) {
+            String msg = "Unexpected error taking screenshot: " + t.getMessage();
+            logSevere(msg);
+            System.out.println(msg);
+        }
+    }
+
+    private void initLogger() {
+        try {
+            String logsDir = "logs";
+            ensureDir(logsDir);
+
+            logger = Logger.getLogger("RunLogger");
+            logger.setUseParentHandlers(false);
+            for (var h : logger.getHandlers()) logger.removeHandler(h);
+
+            FileHandler fh = new FileHandler(logsDir + File.separator + "execution.log", false);
+            fh.setFormatter(new SimpleFormatter());
+            logger.addHandler(fh);
+        } catch (IOException e) {
+            System.out.println("Could not create log file: " + e.getMessage());
+        }
+    }
+
+    private void cleanDir(String dir) {
+        try {
+            Path path = Path.of(dir);
+            if (Files.exists(path)) {
+                Files.walk(path)
+                        .sorted((a, b) -> b.compareTo(a))
+                        .forEach(p -> { try { Files.deleteIfExists(p); } catch (Exception ignored) {} });
+            }
+            Files.createDirectories(path);
+        } catch (Exception ignored) {}
+    }
+
+    private void ensureDir(String dir) {
+        try { Files.createDirectories(Path.of(dir)); } catch (Exception ignored) {}
+    }
+
+    private void logInfo(String m)   { if (logger != null) logger.info(m); }
+    private void logWarn(String m)   { if (logger != null) logger.warning(m); }
+    private void logSevere(String m) { if (logger != null) logger.severe(m); }
+    private String safeMsg(Throwable t) { return t == null ? "" : t.getMessage(); }
+}*/
+
+package com.parabank.listeners;
+
+import com.parabank.managers.DriverManager;
+import org.openqa.selenium.*;
+import org.testng.ITestContext;
+import org.testng.ITestListener;
+import org.testng.ITestResult;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.*;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.concurrent.atomic.AtomicInteger;
+
+public class TestListener implements ITestListener {
+
+    private static final Object LOG_LOCK = new Object();
+
+    private final AtomicInteger passed  = new AtomicInteger(0);
+    private final AtomicInteger failed  = new AtomicInteger(0);
+    private final AtomicInteger skipped = new AtomicInteger(0);
+
+    @Override
+    public void onStart(ITestContext context) {
+        cleanDir("screenshots");
+        makeDir("logs");
+        log("Suite started: " + context.getName());
+    }
+
+    @Override
+    public void onFinish(ITestContext context) {
+        log("Suite finished: " + context.getName());
+        int p = passed.get();
+        int f = failed.get();
+        int s = skipped.get();
+        int total = p + f + s;
+        int executed = p + f;
+        double pctAll  = total == 0 ? 0.0 : (p * 100.0 / total);
+        double pctExec = executed == 0 ? 0.0 : (p * 100.0 / executed);
+        String summary = String.format(
+                "Summary -> Total: %d | Passed: %d | Failed: %d | Skipped: %d | Pass%%(all): %.2f%% | Pass%%(executed): %.2f%%",
+                total, p, f, s, pctAll, pctExec
+        );
+        log(summary);
+        System.out.println(summary);
+    }
+
+    @Override
+    public void onTestStart(ITestResult result) {
+        log("Starting Test: " + result.getName() + " [thread=" + Thread.currentThread().getId() + "]");
+    }
+
+    @Override
+    public void onTestSuccess(ITestResult result) {
+        passed.incrementAndGet();
+        log("Test Passed: " + result.getName());
+        takeScreenshot(result.getName(), "PASS");
+    }
+
+    @Override
+    public void onTestFailure(ITestResult result) {
+        failed.incrementAndGet();
+        log("Test Failed: " + result.getName() + " | reason: " + safeMsg(result.getThrowable()));
+        takeScreenshot(result.getName(), "FAIL");
+    }
+
+    @Override
+    public void onTestSkipped(ITestResult result) {
+        skipped.incrementAndGet();
+        log("Test Skipped: " + result.getName());
+    }
+
+    private void takeScreenshot(String testName, String status) {
+        try {
+            WebDriver driver = DriverManager.getDriver();
+            File src = ((TakesScreenshot) driver).getScreenshotAs(OutputType.FILE);
+            String ts = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+            long tid = Thread.currentThread().getId();
+            File dest = new File("screenshots" + File.separator + testName + "_" + status + "_T" + tid + "_" + ts + ".png");
+            Files.createDirectories(dest.getParentFile().toPath());
+            Files.copy(src.toPath(), dest.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            log("Screenshot saved: " + dest.getAbsolutePath());
+        } catch (Exception e) {
+            log("Could not take screenshot for " + testName + ": " + e.getMessage());
+        }
+    }
+
+    private void log(String msg) {
+        System.out.println(msg);
+        try {
+            Path logFile = Path.of("logs", "execution.log");
+            Files.createDirectories(logFile.getParent());
+            String line = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                    + "  " + msg + System.lineSeparator();
+            synchronized (LOG_LOCK) {
+                Files.writeString(logFile, line, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+            }
+        } catch (IOException ignored) {}
+    }
+
+    private void cleanDir(String dir) {
+        try {
+            Path path = Path.of(dir);
+            if (Files.exists(path)) {
+                Files.walk(path).sorted((a, b) -> b.compareTo(a))
+                        .forEach(p -> { try { Files.deleteIfExists(p); } catch (Exception ignored) {} });
+            }
+            Files.createDirectories(path);
+        } catch (Exception ignored) {}
+    }
+
+    private void makeDir(String dir) {
+        try { Files.createDirectories(Path.of(dir)); } catch (Exception ignored) {}
+    }
+
+    private String safeMsg(Throwable t) { return t == null ? "" : t.getMessage(); }
+}
+
