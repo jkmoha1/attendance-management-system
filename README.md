@@ -1,10 +1,6 @@
 
 # 📘 Attendance Management System — Project Documentation
 
-> This repository currently contains an Eclipse workspace dump rather than a clean, standalone app. To make it easy to understand, run, and extend, this README provides a **complete, implementation-ready plan** including the **ER diagram, class diagram, database schema, and suggested project structure**. You can adopt this as-is and progressively align your codebase to it.
-
----
-
 ## 🔍 High-Level Overview
 
 A web-based system to manage attendance for students/employees. Key personas:
@@ -260,96 +256,6 @@ erDiagram
 
 ---
 
-## 🧩 Class Diagram (Mermaid)
-
-```mermaid
-classDiagram
-  class Department {
-    +Long id
-    +String name
-    +String code
-    +Instant createdAt
-    +Instant updatedAt
-  }
-
-  class Role {
-    +Long id
-    +String name  // ADMIN, FACULTY, STUDENT
-    +String label
-  }
-
-  class User {
-    +Long id
-    +Department department
-    +Role role
-    +String fullName
-    +String email
-    +String phone
-    +String passwordHash
-    +Status status
-  }
-
-  class Course {
-    +Long id
-    +Department department
-    +String code
-    +String name
-    +String term
-  }
-
-  class Enrollment {
-    +Long id
-    +User user
-    +Course course
-    +CourseRole roleInCourse
-  }
-
-  class Session {
-    +Long id
-    +Course course
-    +LocalDate sessionDate
-    +LocalTime startTime
-    +LocalTime endTime
-    +String topic
-    +User createdBy
-  }
-
-  class Attendance {
-    +Long id
-    +Session session
-    +User student
-    +AttendanceStatus status
-    +String remarks
-    +User markedBy
-    +Instant markedAt
-  }
-
-  class Holiday {
-    +Long id
-    +LocalDate holidayOn
-    +String name
-    +Scope scope
-    +Department department
-    +Course course
-  }
-
-  enum Status { ACTIVE INACTIVE SUSPENDED }
-  enum CourseRole { STUDENT FACULTY }
-  enum AttendanceStatus { PRESENT ABSENT LATE EXCUSED }
-  enum Scope { GLOBAL DEPARTMENT COURSE }
-
-  Department "1" --> "0..*" User : has
-  Role "1" --> "0..*" User : assigns
-  Department "1" --> "0..*" Course : offers
-  User "1" --> "0..*" Enrollment : participates
-  Course "1" --> "0..*" Enrollment : includes
-  Course "1" --> "0..*" Session : schedules
-  Session "1" --> "0..*" Attendance : records
-  User "1" --> "0..*" Attendance : student
-  User "1" --> "0..*" Session : creates
-  Holiday "0..*" --> "1" Department : scoped_to
-  Holiday "0..*" --> "1" Course : scoped_to
-```
 
 ---
 
@@ -390,8 +296,6 @@ GROUP BY c.code, s.session_date
 ORDER BY s.session_date DESC;
 ```
 
----
-
 ## 🧰 API Endpoints (suggested, REST)
 
 ```
@@ -418,8 +322,6 @@ GET    /api/students/{id}/attendance?courseId=&from=&to=
 GET    /api/reports/attendance?courseId=&from=&to=
 ```
 
----
-
 ## 🧭 How to Align This With Your Workspace
 
 1. Create a new Maven project using the structure above.
@@ -429,7 +331,4 @@ GET    /api/reports/attendance?courseId=&from=&to=
 5. Then implement DAOs/Repositories and Services following the ER model.
 6. Finally, add controllers (Servlet/JAX-RS/Spring MVC) and JSP pages or a JS front-end.
 
----
-
-## 📄 License
 
