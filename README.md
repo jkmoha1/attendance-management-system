@@ -130,8 +130,8 @@ public class Demo {
         var reportService     = new ReportService(attendanceService);
 
         // employees
-        employeeService.addEmployee(new Employee(1, "Alice", "alice@acme.com", "QA"));
-        employeeService.addEmployee(new Employee(2, "Bob",   "bob@acme.com",   "Eng"));
+        employeeService.addEmployee(new Employee(1, "Adeena", "adeena@amazon.com", "QA"));
+        employeeService.addEmployee(new Employee(2, "Musthafa",   "musthafa@amazon.com",   "Eng"));
 
         // attendance
         attendanceService.clockIn(1);
